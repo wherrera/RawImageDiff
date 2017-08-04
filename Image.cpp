@@ -30,6 +30,15 @@ int Image::get(int index)
 	return 0;
 }
 
+int Image::channels()
+{
+	if (_type == IMAGE_TYPE::RAW8_RGB)
+	{
+		return 3;
+	}
+	return 0;
+}
+
 void Image::set(int index, int color) {
 	if (_type == IMAGE_TYPE::RAW8_RGB)
 	{
@@ -65,7 +74,7 @@ bool Image::load(char *path) {
 		return false;
 	
 	int size = infile.tellg();
-	printf("file size: %d", size);
+	printf("\nfile size: %d", size);
 	char* buffer = new char[size];
 	
 	infile.seekg(0,ios::beg);

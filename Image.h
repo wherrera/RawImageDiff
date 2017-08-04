@@ -19,6 +19,7 @@ public:
 	IMAGE_TYPE type();
 	bool load(char *path);
 	bool save(char *path);
+	int channels();
 	int get(int index);
 	void set(int index, int color);
 	int size();

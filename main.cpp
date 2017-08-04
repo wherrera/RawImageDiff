@@ -6,16 +6,40 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <ctime>
+#include <thread>
 
 #include "Image.h"
 
 using namespace std;
 
+#define NUM_WORKERS 4
+#define USE_THREADS true
+
+void run(int start, int end, Image *img1, Image *img2, Image *output)
+{
+	printf("\nStarting chunk: (%d,%d)",start,end);
+
+	for (int i = start; i < end; i += 3)
+	{
+		int pixel1 = img1->get(i);
+		int pixel2 = img2->get(i);
+
+		output->set(i, pixel2 - pixel1);
+
+		if (pixel2 - pixel1 != 0)
+		{
+			//printf("\npixel: %d,%d -> %d", pixel1, pixel2, pixel2 - pixel1);
+		}
+	}
+}
+
+
 int main(int count, char *args[])
 {
-	printf("RawImageDiff");
+	printf("RawImageDiff v1.0");
 
-	printf("\ncount: %d", count);
+	printf("\nNUM_WORKERS: %d", NUM_WORKERS);
 
 	for (int i = 0; i < count; i++) {
 		printf("\narg: %s", args[i]);
@@ -36,24 +60,50 @@ int main(int count, char *args[])
 
 	img2->load(args[2]);
 
-	Image *save = Image::generate(img1->size());	
+	if (img1->size() != img2->size()) {
+		printf("\nerror: images must be of equal size.");
+		return -1;
+	}
 
-	for (int i = 0; i < img1->size(); i += 3)
+	Image *output = Image::generate(img1->size());
+
+	int num_pixels = img1->size() / img1->channels();
+	int chunk_size = num_pixels / NUM_WORKERS;
+	int remainder = num_pixels % NUM_WORKERS;
+
+	std::thread *workers = new std::thread[NUM_WORKERS];
+
+	clock_t start_tm = clock();
+
+	for (int i = 0; i < NUM_WORKERS; i++)
 	{
-		int pixel1 = img1->get(i);
-		int pixel2 = img2->get(i);
+		int start_pixel = i * chunk_size;
+		int end_pixel = start_pixel + chunk_size;
 
-		save->set(i, pixel2-pixel1 );
+		if (i == NUM_WORKERS - 1) {
+			end_pixel += remainder;
+		}
 
-		if (pixel2 - pixel1 != 0)
-		{
-			printf("\npixel: %d,%d -> %d", pixel1, pixel2, pixel2 - pixel1);
+		if (USE_THREADS) {
+			workers[i] = std::thread(run, start_pixel * img1->channels(), end_pixel * img1->channels(), img1, img2, output);
+		}
+		else {
+			run(start_pixel * img1->channels(), end_pixel * img1->channels(), img1, img2, output);
 		}
 	}
 
-	save->save("result.raw");
+	if (USE_THREADS) {
+		for (int i = 0; i < NUM_WORKERS; i++)
+		{
+			workers[i].join();
+		}
+	}
 
-	printf("\ndone.");
+	output->save("result.raw");
+
+	clock_t tm = clock() - start_tm;
+
+	printf("\ncompleted in: %f seconds", ((float)tm)/CLOCKS_PER_SEC );
 
 	return 0;
 }
